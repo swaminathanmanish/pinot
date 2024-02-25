@@ -175,7 +175,7 @@ public class ParquetRecordReaderTest extends AbstractRecordReaderTest {
       Assert.assertTrue(nativeRecordReader.hasNext());
       final GenericRow avroReaderRow = avroRecordReader.next(avroReuse);
       final GenericRow nativeReaderRow = nativeRecordReader.next(nativeReuse);
-      if (!skipIndividualRecordComparison) {
+     if (!skipIndividualRecordComparison) {
         Assert.assertEquals(nativeReaderRow.toString(), avroReaderRow.toString());
         Assert.assertTrue(avroReaderRow.equals(nativeReaderRow));
       }

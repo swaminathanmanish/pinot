@@ -19,6 +19,7 @@
 package org.apache.pinot.plugin.inputformat.avro;
 
 import com.google.common.collect.ImmutableSet;
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Collections;
@@ -57,6 +58,27 @@ public class AvroRecordExtractor extends BaseRecordExtractor<GenericRecord> {
     }
   }
 
+  Object handleDeprecatedTypes(Object value, Schema.Field field) {
+    Schema.Type avroColumnType = field.schema().getType();
+    if (avroColumnType == org.apache.avro.Schema.Type.UNION) {
+      org.apache.avro.Schema nonNullSchema = null;
+      for (org.apache.avro.Schema childFieldSchema : field.schema().getTypes()) {
+        if (childFieldSchema.getType() != org.apache.avro.Schema.Type.NULL) {
+          if (nonNullSchema == null) {
+            nonNullSchema = childFieldSchema;
+          } else {
+            throw new IllegalStateException("More than one non-null schema in UNION schema");
+          }
+        }
+      }
+      //INT96 is deprecated
+      if (nonNullSchema.getName().equals("INT96")) {
+        return new BigInteger(((byte[]) value)).longValue();
+      }
+    }
+    return value;
+  }
+
   @Override
   public GenericRow extract(GenericRecord from, GenericRow to) {
     if (_extractAll) {
@@ -68,7 +90,7 @@ public class AvroRecordExtractor extends BaseRecordExtractor<GenericRecord> {
           value = AvroSchemaUtil.applyLogicalType(field, value);
         }
         if (value != null) {
-          value = convert(value);
+          value = handleDeprecatedTypes(convert(value), field);
         }
         to.putValue(fieldName, value);
       }
